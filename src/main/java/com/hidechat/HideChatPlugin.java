@@ -32,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.CanvasSizeChanged;
 import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -59,29 +60,20 @@ public class HideChatPlugin extends Plugin {
 		return configManager.getConfig(HideChatConfig.class);
 	}
 
-	@Subscribe
-	public void onCanvasSizeChanged(CanvasSizeChanged canvasSizeChanged) {
-		if (!client.isResized()) {
-			showChatBox(); // Ensure the chatbox is shown if the client is not resized
-		} else if (config.hideChatBox()) {
-			toggleChatBox(); // Reapply hiding logic if the client is resized
-		}
-	}
-
 	@Override
 	protected void startUp() throws Exception {
-		toggleChatBox(); // Ensure chat box visibility is set on startup
+		toggleChatBox(); // Ensure chatbox visibility is set on startup
 	}
 
 	@Override
 	protected void shutDown() throws Exception {
-		showChatBox(); // Ensure chat box is shown when the plugin is disabled
+		showChatBox(); // Ensure chatbox is shown when the plugin is disabled
 	}
 
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event) {
 		if (event.getGroup().equals("hidechat")) {
-			toggleChatBox(); // Update chat box visibility when the config changes
+			toggleChatBox(); // Update chatbox visibility when the config changes
 		}
 	}
 
@@ -95,23 +87,36 @@ public class HideChatPlugin extends Plugin {
 		}
 	}
 
+	@Subscribe
+	public void onVarbitChanged(VarbitChanged event) {
+		// Reapply the hiding logic if a relevant varbit changes
+		if (config.hideChatBox()) {
+			toggleChatBox();
+		}
+	}
+
+	@Subscribe
+	public void onCanvasSizeChanged(CanvasSizeChanged event) {
+		if (!client.isResized()) {
+			showChatBox(); // Ensure chatbox is shown if the client is not resized
+		} else if (config.hideChatBox()) {
+			toggleChatBox(); // Reapply hiding logic if the client is resized
+		}
+	}
+
 	protected void hideWidgetChildren(Widget root, boolean hide) {
-		Widget[] rootDynamicChildren = root.getDynamicChildren();
-		Widget[] rootNestedChildren = root.getNestedChildren();
-		Widget[] rootStaticChildren = root.getStaticChildren();
+		if (root == null) {
+			return;
+		}
 
-		Widget[] rootChildren = new Widget[rootDynamicChildren.length + rootNestedChildren.length
-				+ rootStaticChildren.length];
-		System.arraycopy(rootDynamicChildren, 0, rootChildren, 0, rootDynamicChildren.length);
-		System.arraycopy(rootNestedChildren, 0, rootChildren, rootDynamicChildren.length, rootNestedChildren.length);
-		System.arraycopy(rootStaticChildren, 0, rootChildren, rootDynamicChildren.length + rootNestedChildren.length,
-				rootStaticChildren.length);
-
-		for (Widget w : rootChildren) {
-			if (w != null) {
-				// hiding the widget with content type 1337 prevents the game from rendering so
-				if (w.getContentType() != 1337) {
-					w.setHidden(hide);
+		Widget[] children = root.getDynamicChildren();
+		if (children != null) {
+			root.setHidden(hide);
+			log.debug("hiding root");
+			for (Widget child : children) {
+				if (child != null && child.getContentType() != 1337) {
+					child.setHidden(hide);
+					log.debug("hiding child");
 				}
 			}
 		}
@@ -119,7 +124,8 @@ public class HideChatPlugin extends Plugin {
 
 	private void toggleChatBox() {
 		clientThread.invokeLater(() -> {
-			Widget chatbox = client.getWidget(InterfaceID.CHATBOX, 0);
+			// Use the numeric group ID for the chatbox widget (162)
+			Widget chatbox = client.getWidget(162, 0); // 162 is the chatbox group ID
 			if (chatbox != null) {
 				hideWidgetChildren(chatbox, config.hideChatBox());
 			}
@@ -128,7 +134,8 @@ public class HideChatPlugin extends Plugin {
 
 	private void showChatBox() {
 		clientThread.invokeLater(() -> {
-			Widget chatbox = client.getWidget(InterfaceID.CHATBOX, 0);
+			// Use the numeric group ID for the chatbox widget (162)
+			Widget chatbox = client.getWidget(162, 0); // 162 is the chatbox group ID
 			if (chatbox != null) {
 				hideWidgetChildren(chatbox, false);
 			}

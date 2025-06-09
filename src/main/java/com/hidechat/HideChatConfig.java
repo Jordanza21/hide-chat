@@ -29,18 +29,17 @@ package com.hidechat;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.Keybind;
 
 @ConfigGroup("hidechat")
-public interface HideChatConfig extends Config
-{
-	@ConfigItem(
-			position = 0,
-			keyName = "Hide Chat",
-			name = "Hide Chat",
-			description = "Hide the chat box from screen"
-	)
-	default boolean hideChatBox()
-	{
+public interface HideChatConfig extends Config {
+	@ConfigItem(position = 0, keyName = "Hide Chat", name = "Hide Chat", description = "Hide the chat box from screen")
+	default boolean hideChatBox() {
 		return false;
+	}
+
+	@ConfigItem(position = 1, keyName = "toggleHotkey", name = "Toggle Hotkey", description = "Keybind to toggle hiding the chat box")
+	default Keybind toggleHotkey() {
+		return Keybind.NOT_SET; // Default to no keybind
 	}
 }

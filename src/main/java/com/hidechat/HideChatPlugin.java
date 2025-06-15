@@ -78,7 +78,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	@Override
 	protected void startUp() throws Exception {
 		keyManager.registerKeyListener(this); // Register the key listener
-		toggleChatBox(); // Ensure chatbox visibility is set on startup
+		toggleChatBox(); // Ensure chatbox visibility is set based on config on startup
 	}
 
 	@Override
@@ -121,6 +121,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 		}
 	}
 
+	//Ensures all children under root widget is also hidden (helps prevent chatbox from flashing sometimes)
 	protected void hideWidgetChildren(Widget root, boolean hide) {
 		if (root == null) {
 			return;
@@ -140,11 +141,19 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	}
 
 	private void toggleChatBox() {
+		if (config.hideChatBox()) {
+			hideChatBox(); // Hide chatbox if configured to do so
+		} else {
+			showChatBox(); // Show chatbox if not configured to hide
+		}
+	}
+
+	private void hideChatBox() {
 		clientThread.invokeLater(() -> {
 			// Use the numeric group ID for the chatbox widget (162)
-			Widget chatbox = client.getWidget(162, 0); // 162 is the chatbox group ID
+			Widget chatbox = client.getWidget(162, 0);
 			if (chatbox != null) {
-				hideWidgetChildren(chatbox, config.hideChatBox());
+				hideWidgetChildren(chatbox, true);
 			}
 		});
 	}
@@ -152,7 +161,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	private void showChatBox() {
 		clientThread.invokeLater(() -> {
 			// Use the numeric group ID for the chatbox widget (162)
-			Widget chatbox = client.getWidget(162, 0); // 162 is the chatbox group ID
+			Widget chatbox = client.getWidget(162, 0);
 			if (chatbox != null) {
 				hideWidgetChildren(chatbox, false);
 			}
@@ -161,7 +170,12 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 
 	@Override
 	public void keyTyped(KeyEvent e) {
-		// Not used
+		// Not used, just required for Key listener interface
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+		// Not used, just required for Key listener interface
 	}
 
 	@Override
@@ -174,28 +188,31 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 			configManager.setConfiguration("hidechat", "Hide Chat", !currentState);
 
 			// Disable combat override and combat option when user manually toggles
+			// Only if the hotkey is pressed while it is currently hidden b/c of combat
 			if (config.hideInCombat() && combatOverrideActive) {
 				configManager.setConfiguration("hidechat", "hideInCombat", false);
 				combatOverrideActive = false;
 			}
 
-			// Apply the change to the chatbox visibility
+			// Actually apply the change to the chatbox visibility
 			toggleChatBox();
 		}
-	}
-
-	@Override
-	public void keyReleased(KeyEvent e) {
-		// Not used
 	}
 
 	@Subscribe
 	public void onStatChanged(StatChanged event) {
 		Skill skill = event.getSkill();
-		// List of combat skills
+		// List of combat skills to check
 		if (skill == Skill.ATTACK || skill == Skill.STRENGTH || skill == Skill.DEFENCE ||
 				skill == Skill.RANGED || skill == Skill.MAGIC || skill == Skill.HITPOINTS) {
-			lastCombatXpTime = System.currentTimeMillis();
+			// Nested if to verify player is interacting with some NPC or Player.
+			// TO-DO add configuration options to enable checking for player or npc or both - may not want to hide in pvp
+			// but may want to hide in pvm[-4554
+			if (client.getLocalPlayer() != null && client.getLocalPlayer().getInteracting() != null) {
+				lastCombatXpTime = System.currentTimeMillis();
+			} else {
+				return;
+			}
 		}
 	}
 

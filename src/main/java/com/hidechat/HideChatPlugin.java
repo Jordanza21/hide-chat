@@ -43,6 +43,9 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.api.ScriptID;
 import net.runelite.client.input.KeyListener;
 import net.runelite.client.input.KeyManager;
+import net.runelite.api.events.StatChanged;
+import net.runelite.api.Skill;
+import net.runelite.api.events.GameTick;
 
 import java.awt.event.KeyEvent;
 
@@ -63,6 +66,9 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 
 	@Inject
 	private ConfigManager configManager; // Inject ConfigManager
+
+	private long lastCombatXpTime = 0;
+	private boolean combatOverrideActive = false;
 
 	@Provides
 	private HideChatConfig provideConfig(ConfigManager configManager) {
@@ -167,6 +173,12 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 			// Update the configuration value
 			configManager.setConfiguration("hidechat", "Hide Chat", !currentState);
 
+			// Disable combat override and combat option when user manually toggles
+			if (config.hideInCombat() && combatOverrideActive) {
+				configManager.setConfiguration("hidechat", "hideInCombat", false);
+				combatOverrideActive = false;
+			}
+
 			// Apply the change to the chatbox visibility
 			toggleChatBox();
 		}
@@ -175,5 +187,36 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	@Override
 	public void keyReleased(KeyEvent e) {
 		// Not used
+	}
+
+	@Subscribe
+	public void onStatChanged(StatChanged event) {
+		Skill skill = event.getSkill();
+		// List of combat skills
+		if (skill == Skill.ATTACK || skill == Skill.STRENGTH || skill == Skill.DEFENCE ||
+				skill == Skill.RANGED || skill == Skill.MAGIC || skill == Skill.HITPOINTS) {
+			lastCombatXpTime = System.currentTimeMillis();
+		}
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick event) {
+		if (config.hideInCombat()) {
+			int timeoutMs = config.combatTimeoutSeconds() * 1000;
+			boolean inCombat = (System.currentTimeMillis() - lastCombatXpTime) < timeoutMs;
+			if (inCombat) {
+				if (!config.hideChatBox() || !combatOverrideActive) {
+					configManager.setConfiguration("hidechat", "Hide Chat", true);
+					toggleChatBox();
+					combatOverrideActive = true;
+				}
+			} else {
+				if (config.hideChatBox() && combatOverrideActive) {
+					configManager.setConfiguration("hidechat", "Hide Chat", false);
+					toggleChatBox();
+				}
+				combatOverrideActive = false;
+			}
+		}
 	}
 }

@@ -30,6 +30,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.Keybind;
+import net.runelite.client.config.Range;
 
 @ConfigGroup("hidechat")
 public interface HideChatConfig extends Config {
@@ -41,5 +42,16 @@ public interface HideChatConfig extends Config {
 	@ConfigItem(position = 1, keyName = "toggleHotkey", name = "Toggle Hotkey", description = "Keybind to toggle hiding the chat box")
 	default Keybind toggleHotkey() {
 		return Keybind.NOT_SET; // Default to no keybind
+	}
+
+	@ConfigItem(keyName = "hideInCombat", name = "Hide chat in combat", description = "Hide the chatbox when in combat. Toggling with hotkey will disable this as well if it is currently hidden due to combat.")
+	default boolean hideInCombat() {
+		return false;
+	}
+
+	@ConfigItem(keyName = "combatTimeoutSeconds", name = "Combat Hide Timeout", description = "Number of seconds after last combat XP to keep chat hidden.", position = 2)
+	@Range(min = 1, max = 60)
+	default int combatTimeoutSeconds() {
+		return 8;
 	}
 }

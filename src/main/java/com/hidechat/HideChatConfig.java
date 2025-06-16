@@ -59,8 +59,4 @@ public interface HideChatConfig extends Config {
 	default int combatTimeoutSeconds() {
 		return 8;
 	}
-	// TODO add option to unhide chat when level up window appears
-	// TODO (to investigate) add option to unhide when talking with an NPC
-	// TODO add option to unhide when any dialog window is triggered, such as
-	// teleport menus, confirmation messages... etc
 }

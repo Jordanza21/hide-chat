@@ -206,7 +206,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 		if (skill == Skill.ATTACK || skill == Skill.STRENGTH || skill == Skill.DEFENCE ||
 				skill == Skill.RANGED || skill == Skill.MAGIC || skill == Skill.HITPOINTS) {
 			// Nested if to verify player is interacting with some NPC or Player.
-			// TO-DO add configuration options to enable checking for player or npc or both - may not want to hide in pvp
+			// TODO add configuration options to enable checking for player or npc or both - may not want to hide in pvp
 			// but may want to hide in pvm[-4554
 			if (client.getLocalPlayer() != null && client.getLocalPlayer().getInteracting() != null) {
 				lastCombatXpTime = System.currentTimeMillis();

@@ -69,6 +69,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 
 	private long lastCombatXpTime = 0;
 	private boolean combatOverrideActive = false;
+	private boolean hideInCombat = false;
 
 	@Provides
 	private HideChatConfig provideConfig(ConfigManager configManager) {
@@ -90,6 +91,14 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event) {
 		if (event.getGroup().equals("hidechat")) {
+			// Sync hideInCombat with PvM/PvP options
+			boolean pvm = config.hideInPvm();
+			boolean pvp = config.hideInPvp();
+			if (pvm || pvp) {
+				hideInCombat = true;
+			} else {
+				hideInCombat = false;
+			}
 			toggleChatBox(); // Update chatbox visibility when the config changes
 		}
 	}
@@ -121,7 +130,8 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 		}
 	}
 
-	//Ensures all children under root widget is also hidden (helps prevent chatbox from flashing sometimes)
+	// Ensures all children under root widget is also hidden (helps prevent chatbox
+	// from flashing sometimes)
 	protected void hideWidgetChildren(Widget root, boolean hide) {
 		if (root == null) {
 			return;
@@ -189,7 +199,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 
 			// Disable combat override and combat option when user manually toggles
 			// Only if the hotkey is pressed while it is currently hidden b/c of combat
-			if (config.hideInCombat() && combatOverrideActive) {
+			if (hideInCombat && combatOverrideActive) {
 				configManager.setConfiguration("hidechat", "hideInCombat", false);
 				combatOverrideActive = false;
 			}
@@ -205,11 +215,17 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 		// List of combat skills to check
 		if (skill == Skill.ATTACK || skill == Skill.STRENGTH || skill == Skill.DEFENCE ||
 				skill == Skill.RANGED || skill == Skill.MAGIC || skill == Skill.HITPOINTS) {
-			// Nested if to verify player is interacting with some NPC or Player.
-			// TODO add configuration options to enable checking for player or npc or both - may not want to hide in pvp
-			// but may want to hide in pvm[-4554
+			// Check if player is interacting with an NPC or player
+			// Then check if the interaction is with a player or NPC
 			if (client.getLocalPlayer() != null && client.getLocalPlayer().getInteracting() != null) {
-				lastCombatXpTime = System.currentTimeMillis();
+				Object interacting = client.getLocalPlayer().getInteracting();
+				// A.I. says this is a way of checking if the interaction is an NPC or Player
+				// I couldn't think of a better way to do it...?
+				boolean interactingIsNpc = interacting instanceof net.runelite.api.NPC;
+				boolean interactingIsPlayer = interacting instanceof net.runelite.api.Player;
+				if ((config.hideInPvm() && interactingIsNpc) || (config.hideInPvp() && interactingIsPlayer)) {
+					lastCombatXpTime = System.currentTimeMillis();
+				}
 			} else {
 				return;
 			}
@@ -218,7 +234,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 
 	@Subscribe
 	public void onGameTick(GameTick event) {
-		if (config.hideInCombat()) {
+		if (hideInCombat) {
 			int timeoutMs = config.combatTimeoutSeconds() * 1000;
 			boolean inCombat = (System.currentTimeMillis() - lastCombatXpTime) < timeoutMs;
 			if (inCombat) {

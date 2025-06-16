@@ -44,18 +44,23 @@ public interface HideChatConfig extends Config {
 		return Keybind.NOT_SET; // Default to no keybind
 	}
 
-	@ConfigItem(keyName = "hideInCombat", name = "Hide chat in combat", description = "Hide the chatbox when in combat. Toggling with hotkey will disable this as well if it is currently hidden due to combat.")
-	default boolean hideInCombat() {
+	@ConfigItem(position = 2, keyName = "hideInPvm", name = "Hide chat in PvM", description = "Hide the chatbox when interacting with NPCs (PvM)")
+	default boolean hideInPvm() {
 		return false;
 	}
 
-	@ConfigItem(keyName = "combatTimeoutSeconds", name = "Combat Hide Timeout", description = "Number of seconds after last combat XP to keep chat hidden.", position = 2)
+	@ConfigItem(position = 3, keyName = "hideInPvp", name = "Hide chat in PvP", description = "Hide the chatbox when interacting with other players (PvP)")
+	default boolean hideInPvp() {
+		return false;
+	}
+
+	@ConfigItem(position = 4, keyName = "combatTimeoutSeconds", name = "Combat Hide Timeout", description = "Number of seconds after last combat XP to keep chat hidden.")
 	@Range(min = 1, max = 60)
 	default int combatTimeoutSeconds() {
 		return 8;
 	}
-
-	//TODO add option to unhide chat when level up window appears
-	//TODO (to investigate) add option to unhide when talking with an NPC
-	//TODO add option to unhide when any dialog window is triggered, such as teleport menus, confirmation messages... etc
+	// TODO add option to unhide chat when level up window appears
+	// TODO (to investigate) add option to unhide when talking with an NPC
+	// TODO add option to unhide when any dialog window is triggered, such as
+	// teleport menus, confirmation messages... etc
 }

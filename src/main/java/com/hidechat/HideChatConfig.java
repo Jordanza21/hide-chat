@@ -64,4 +64,9 @@ public interface HideChatConfig extends Config {
 	default boolean hidePrivateChat() {
 		return false;
 	}
+
+	@ConfigItem(position = 6, keyName = "showGameDrivenChat", name = "Show Game Dialog Chat", description = "Temporarily show chat for game-driven dialogs- There is a delay between the dialog appearing and disappearing this is intentional, even though it feels weird.")
+	default boolean showGameDrivenChat() {
+		return true;
+	}
 }

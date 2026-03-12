@@ -34,6 +34,7 @@ import net.runelite.api.events.CanvasSizeChanged;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.widgets.Widget;
+import net.runelite.api.widgets.WidgetInfo;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -46,6 +47,7 @@ import net.runelite.client.input.KeyManager;
 import net.runelite.api.events.StatChanged;
 import net.runelite.api.Skill;
 import net.runelite.api.events.GameTick;
+import net.runelite.client.util.Text;
 
 import java.awt.event.KeyEvent;
 
@@ -140,14 +142,16 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 			return;
 		}
 
+		if (root.isHidden() == hide) {
+			return;
+		}
+
 		Widget[] children = root.getDynamicChildren();
 		if (children != null) {
 			root.setHidden(hide);
-			log.debug("hiding root");
 			for (Widget child : children) {
 				if (child != null && child.getContentType() != 1337) {
 					child.setHidden(hide);
-					log.debug("hiding child");
 				}
 			}
 		}
@@ -155,8 +159,14 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 
 	private void toggleChatBox() {
 		if (config.hideChatBox()) {
-			hideChatBox(); // Hide chatbox if configured to do so
-			if (config.hidePrivateChat()) {
+			boolean showForDialog = shouldTemporarilyShowChat();
+			if (showForDialog) {
+				showChatBox();
+			} else {
+				hideChatBox(); // Hide chatbox if configured to do so
+			}
+
+			if (config.hidePrivateChat() && !showForDialog) {
 				hidePrivateChatBox();
 			} else {
 				showPrivateChatBox();
@@ -167,9 +177,84 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 		}
 	}
 
+	private boolean shouldTemporarilyShowChat() {
+		if (!config.showGameDrivenChat()) {
+			return false;
+		}
+
+		return hasClickableDialogueOption() || isNpcTalking() || isPlayerTalking() || isSpriteDialogShowing()
+				|| hasClickHereToContinuePrompt();
+	}
+
+	private boolean hasClickableDialogueOption() {
+		Widget options = client.getWidget(WidgetInfo.DIALOG_OPTION_OPTIONS);
+		if (options == null) {
+			return false;
+		}
+
+		if (widgetHasVisibleText(options)) {
+			return true;
+		}
+
+		Widget[] children = options.getDynamicChildren();
+		if (children != null) {
+			for (Widget child : children) {
+				if (widgetHasVisibleText(child)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private boolean isNpcTalking() {
+		Widget npcText = client.getWidget(WidgetInfo.DIALOG_NPC_TEXT);
+		return widgetHasVisibleText(npcText);
+	}
+
+	private boolean isPlayerTalking() {
+		Widget playerText = client.getWidget(WidgetInfo.DIALOG_PLAYER_TEXT);
+		return widgetHasVisibleText(playerText);
+	}
+
+	private boolean isSpriteDialogShowing() {
+		Widget spriteText = client.getWidget(WidgetInfo.DIALOG_SPRITE_TEXT);
+		return widgetHasVisibleText(spriteText);
+	}
+
+	private boolean hasClickHereToContinuePrompt() {
+		Widget chatbox = client.getWidget(162, 0);
+		if (chatbox == null) {
+			return false;
+		}
+
+		Widget[] children = chatbox.getDynamicChildren();
+		if (children == null) {
+			return false;
+		}
+
+		for (Widget child : children) {
+			String text = Text.removeTags(child != null ? child.getText() : null);
+			if (text != null && text.toLowerCase().contains("click here to continue")) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private boolean widgetHasVisibleText(Widget widget) {
+		if (widget == null) {
+			return false;
+		}
+
+		String text = Text.removeTags(widget.getText());
+		return text != null && !text.trim().isEmpty();
+	}
+
 	private void hideChatBox() {
-		clientThread.invokeLater(() -> {
-			// Use the numeric group ID for the chatbox widget (162)
+		runOnClientThread(() -> {
 			Widget chatbox = client.getWidget(162, 0);
 			if (chatbox != null) {
 				hideWidgetChildren(chatbox, true);
@@ -178,8 +263,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	}
 
 	private void showChatBox() {
-		clientThread.invokeLater(() -> {
-			// Use the numeric group ID for the chatbox widget (162)
+		runOnClientThread(() -> {
 			Widget chatbox = client.getWidget(162, 0);
 			if (chatbox != null) {
 				hideWidgetChildren(chatbox, false);
@@ -188,8 +272,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	}
 
 	private void hidePrivateChatBox() {
-		clientThread.invokeLater(() -> {
-			// Use the numeric group ID for the private chat widget (163)
+		runOnClientThread(() -> {
 			Widget privateChatWidget = client.getWidget(163, 0);
 			if (privateChatWidget != null) {
 				hideWidgetChildren(privateChatWidget, true);
@@ -198,13 +281,20 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	}
 
 	private void showPrivateChatBox() {
-		clientThread.invokeLater(() -> {
-			// Use the numeric group ID for the private chat widget (163)
+		runOnClientThread(() -> {
 			Widget privateChatWidget = client.getWidget(163, 0);
 			if (privateChatWidget != null) {
 				hideWidgetChildren(privateChatWidget, false);
 			}
 		});
+	}
+
+	private void runOnClientThread(Runnable task) {
+		if (client.isClientThread()) {
+			task.run();
+		} else {
+			clientThread.invokeLater(task);
+		}
 	}
 
 	@Override

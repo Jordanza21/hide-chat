@@ -59,4 +59,9 @@ public interface HideChatConfig extends Config {
 	default int combatTimeoutSeconds() {
 		return 8;
 	}
+
+	@ConfigItem(position = 5, keyName = "hidePrivateChat", name = "Hide Private Chat", description = "Hide incoming and outgoing private chat messages")
+	default boolean hidePrivateChat() {
+		return false;
+	}
 }

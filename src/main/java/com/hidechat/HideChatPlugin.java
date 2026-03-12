@@ -87,6 +87,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	protected void shutDown() throws Exception {
 		keyManager.unregisterKeyListener(this); // Unregister the key listener
 		showChatBox(); // Ensure chatbox is shown when the plugin is disabled
+		showPrivateChatBox(); // Ensure private chat widget is shown when the plugin is disabled
 	}
 
 	@Subscribe
@@ -126,6 +127,7 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	public void onCanvasSizeChanged(CanvasSizeChanged event) {
 		if (!client.isResized()) {
 			showChatBox(); // Ensure chatbox is shown if the client is not resized
+			showPrivateChatBox(); // Ensure private chat widget is shown if the client is not resized
 		} else if (config.hideChatBox()) {
 			toggleChatBox(); // Reapply hiding logic if the client is resized
 		}
@@ -154,8 +156,14 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 	private void toggleChatBox() {
 		if (config.hideChatBox()) {
 			hideChatBox(); // Hide chatbox if configured to do so
+			if (config.hidePrivateChat()) {
+				hidePrivateChatBox();
+			} else {
+				showPrivateChatBox();
+			}
 		} else {
 			showChatBox(); // Show chatbox if not configured to hide
+			showPrivateChatBox();
 		}
 	}
 
@@ -175,6 +183,26 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 			Widget chatbox = client.getWidget(162, 0);
 			if (chatbox != null) {
 				hideWidgetChildren(chatbox, false);
+			}
+		});
+	}
+
+	private void hidePrivateChatBox() {
+		clientThread.invokeLater(() -> {
+			// Use the numeric group ID for the private chat widget (163)
+			Widget privateChatWidget = client.getWidget(163, 0);
+			if (privateChatWidget != null) {
+				hideWidgetChildren(privateChatWidget, true);
+			}
+		});
+	}
+
+	private void showPrivateChatBox() {
+		clientThread.invokeLater(() -> {
+			// Use the numeric group ID for the private chat widget (163)
+			Widget privateChatWidget = client.getWidget(163, 0);
+			if (privateChatWidget != null) {
+				hideWidgetChildren(privateChatWidget, false);
 			}
 		});
 	}
@@ -255,4 +283,5 @@ public class HideChatPlugin extends Plugin implements KeyListener {
 			}
 		}
 	}
+
 }
